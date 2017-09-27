@@ -1,0 +1,482 @@
+<html>
+<body>
+<canvas id="myCanvas" style="cursor:crosshair; border:1px solid #000000;" width="400" height="500" style="border:2px solid #000000;">
+</canvas>
+<br/>
+ <form>
+  <input type="radio" name="option" value="paint" id="r1" checked>Dessiner
+  
+  <input type="checkbox" name="SymCheck" value="Symetry" id="r4">Sym&eacute;trie
+  <br>
+  <input type="radio" name="option" value="select" id="r2">S&eacute;lection en rectangle
+  <br>
+  <input type="radio" name="option" value="move" id="r3">D&eacute;placer la s&eacute;lection
+  <input type="checkbox" name="MoveAll" value="MoveAll" id="chbox1" checked> Move All by one Drag<br>
+</form> 
+<button onclick="clearButtonHandler()">Clear</button>
+
+ 
+
+<script language="JavaScript">
+
+function keyDownHandler(e) {
+   // e = e || window.event;
+
+   if (e.keyCode == '38') {
+      console.log("Up Arrow");
+   }
+   else if (e.keyCode == '40') {
+      console.log("Down Arrow");
+   }
+   else if (e.keyCode == '37') {
+      console.log("Left Arrow");
+   }
+   else if (e.keyCode == '39') {
+      console.log("Right Arrow");
+   }
+}
+
+document.onkeydown = keyDownHandler;
+
+var canvas = document.getElementById("myCanvas");
+var canvas_context = canvas.getContext("2d");
+var canvas_rectangle = canvas.getBoundingClientRect();
+ 
+ 
+//**
+ 
+var mouseX;
+var mouseY; 
+var mouse_x = 0, mouse_y = 0; 
+
+var previous_mouse_x;
+var previous_mouse_y;
+var new_mouse_x;
+var new_mouse_y;
+
+// state of the rectangles
+ 
+var rectanglePositions=[];
+var indexOfHilitedRect = -1; // -1 means none
+
+//**
+
+var buttonIsDown = false;
+
+// this is the set of strokes already drawn
+var arrayOfStrokes = [];
+var arrayOfSelectedStrokes = [];
+// this is the stroke currently being drawn
+var stroke = []; // each stroke is an array of points
+var strokeSym = [];
+
+function mouseDownHandler(e) {
+   buttonIsDown = true;
+   previous_mouse_x = mouse_x;
+   previous_mouse_y = mouse_y;
+   var event_x = e.clientX - canvas_rectangle.left;
+   var event_y = e.clientY - canvas_rectangle.top;
+   console.log("mouse down");
+   console.log("   " + event_x + "," + event_y);
+   stroke = [];
+   strokeSym=[];
+   
+   mouseX=parseInt(e.clientX-canvas_rectangle.left);
+   mouseY=parseInt(e.clientY-canvas_rectangle.top);
+	if (document.getElementById('r1').checked) {
+		arrayOfSelectedStrokes=[];
+		rectanglePositions=[];
+		canvas_context.clearRect(0,0,canvas.width,canvas.height);
+		redraw(); 
+	}
+	if (document.getElementById('r2').checked) {
+		arrayOfSelectedStrokes=[];
+		rectanglePositions=[];
+		  
+	}
+	if (document.getElementById('r1').checked && document.getElementById('r4').checked) {
+		arrayOfSelectedStrokes=[];
+		 
+		rectanglePositions=[];
+		canvas_context.clearRect(0,0,canvas.width,canvas.height);
+		redraw(); 
+	}	   
+}
+function mouseUpHandler(e) {
+   buttonIsDown = false; 
+   var event_x = e.clientX - canvas_rectangle.left;
+   var event_y = e.clientY - canvas_rectangle.top;
+   new_mouse_x=event_x;
+   new_mouse_y=event_y;
+   console.log("mouse up");
+   if (document.getElementById('r1').checked && document.getElementById('r4').checked) {
+		   if ( stroke.length > 2 ) {
+			  arrayOfStrokes.push( stroke );
+			  arrayOfStrokes.push( strokeSym );
+		   }
+		   stroke = [];
+		   strokeSym=[];
+   }
+	if (document.getElementById('r1').checked) {
+		   if ( stroke.length > 2 ) {
+			  arrayOfStrokes.push( stroke );
+		   }
+		   stroke = [];
+   }
+   
+   
+   if (document.getElementById('r2').checked) {
+		canvas_context.clearRect(0,0,canvas.width,canvas.height);
+		redraw();
+		redrawSelection();
+      
+	}
+	if(document.getElementById('r3').checked) { 
+	 
+	}
+   
+}
+function mouseMoveHandler(e) { 
+   var event_x = e.clientX - canvas_rectangle.left;
+   var event_y = e.clientY - canvas_rectangle.top;
+    
+   if (document.getElementById('r1').checked) {
+		if ( buttonIsDown ) {
+		  stroke.push( { x : event_x, y : event_y } );
+		  
+			}
+		redraw();
+	}
+	if(document.getElementById('r1').checked && document.getElementById('r4').checked) {
+	    
+		  if ( buttonIsDown ) {
+		   
+		  stroke.push( { x : event_x, y : event_y } );
+		  strokeSym.push( { x : (canvas.width/2-(event_x))+canvas.width/2, y : event_y } );
+		  
+		  }
+		  
+		  
+		
+			var c=document.getElementById("myCanvas");
+			var ctx=c.getContext("2d");
+			ctx.beginPath();
+			ctx.moveTo(canvas.width/2, 0);
+			ctx.lineTo(canvas.width/2, canvas.height); 
+			ctx.strokeStyle="Gold";
+			ctx.stroke(); 
+			
+			redraw();
+		  }
+	else if (document.getElementById('r2').checked) {
+	 if ( buttonIsDown ) {
+		  
+      //  mousemove stuff here
+	   
+      if(!buttonIsDown){return;}
+			
+			canvas_context.clearRect(0,0,canvas.width,canvas.height);
+			redraw();
+			drawRectangle(event_x,event_y);
+			
+		}
+		
+	}
+	
+	
+	else if (document.getElementById('r3').checked && document.getElementById('chbox1').checked){
+		redraw();
+		redrawSelection();
+		var event_x = e.clientX - canvas_rectangle.left;
+	   var event_y = e.clientY - canvas_rectangle.top;
+	   var dx = e.clientX - mouse_x;
+	   var dy = e.clientY - mouse_y;
+	   mouse_x = e.clientX;
+	   mouse_y = e.clientY;
+	   if ( buttonIsDown && indexOfHilitedRect >= 0 ) {
+		   for(var indexOfStroke=0;indexOfStroke<rectanglePositions.length;++indexOfStroke){
+			  rectanglePositions[indexOfStroke].x += dx;
+			  rectanglePositions[indexOfStroke].y += dy;
+			   
+			  for(var j=0;j<rectanglePositions[indexOfStroke].selectedStroke.length; ++j){
+				rectanglePositions[indexOfStroke].selectedStroke[j].x+=dx;
+				rectanglePositions[indexOfStroke].selectedStroke[j].y+=dy;
+				drawStroke(rectanglePositions[indexOfStroke].selectedStroke[j]);
+				} 
+				 
+				redraw(); 
+		   }
+		   
+	   }
+	   
+	   else if ( ! buttonIsDown ) {
+			  var newIndex = computeIndexOfRectangleContainingPoint(mouse_x,mouse_y);
+				
+			  if ( newIndex != indexOfHilitedRect ) {
+				 indexOfHilitedRect = newIndex;
+				 
+			  }
+		   }
+	}
+	
+	
+	else if (document.getElementById('r3').checked){
+		redraw();
+		redrawSelection();
+		var event_x = e.clientX - canvas_rectangle.left;
+	   var event_y = e.clientY - canvas_rectangle.top;
+	   var dx = e.clientX - mouse_x;
+	   var dy = e.clientY - mouse_y;
+	   mouse_x = e.clientX;
+	   mouse_y = e.clientY;
+	   if ( buttonIsDown && indexOfHilitedRect >= 0 ) {
+	    
+		  rectanglePositions[indexOfHilitedRect].x += dx;
+		  rectanglePositions[indexOfHilitedRect].y += dy;
+		  
+		  
+		  var indexOfStroke = arrayOfStrokes.indexOf(rectanglePositions[indexOfHilitedRect].selectedStroke);
+		  for(var j=0;j<rectanglePositions[indexOfHilitedRect].selectedStroke.length; ++j){
+			rectanglePositions[indexOfHilitedRect].selectedStroke[j].x+=dx;
+			rectanglePositions[indexOfHilitedRect].selectedStroke[j].y+=dy;
+			drawStroke(rectanglePositions[indexOfHilitedRect].selectedStroke[j]);
+			} 
+			if (indexOfStroke !== -1) { 
+				arrayOfStrokes[indexOfStroke] = rectanglePositions[indexOfHilitedRect].selectedStroke;
+			}
+			redraw(); 
+	   }
+	   else if ( ! buttonIsDown ) {
+		  var newIndex = computeIndexOfRectangleContainingPoint(mouse_x,mouse_y);
+			
+		  if ( newIndex != indexOfHilitedRect ) {
+			 indexOfHilitedRect = newIndex;
+			 
+		  }
+	   }
+	}
+	
+	
+	
+   
+}
+
+canvas.addEventListener('mousedown',mouseDownHandler);
+canvas.addEventListener('mouseup',mouseUpHandler);
+canvas.addEventListener('mousemove',mouseMoveHandler);
+
+function drawStroke( s ) {
+
+    
+   canvas_context.beginPath();
+   for ( var i = 0; i < s.length; ++i ) {
+      var x = s[i].x;
+      var y = s[i].y;
+      if ( i === 0 ) {
+         canvas_context.moveTo(x,y);
+      }
+      else {
+         canvas_context.lineTo(x,y);
+      }
+   }
+   canvas_context.stroke();
+   
+}
+ 
+function between(min, p, max){
+  result = false;
+
+  if ( min < max ){
+    if ( p > min && p < max ){
+      result = true;
+    }
+  }
+
+  if ( min > max ){
+    if ( p > max && p < min){
+      result = true
+    }
+  }
+
+  if ( p == min || p == max ){
+    result = true;
+  }
+
+  return result;
+}
+
+function point_in_rectagnle( x, y, left, top, right, bottom){
+  result = false;
+
+  if ( between(left,x,right) && between(top,y,bottom ) ){
+    result = true;
+  }
+  return result;
+}
+
+
+function drawRectangle(mX,mY){
+	
+	canvas_context.fillStyle = "rgba(150, 210, 230, 0.3)";
+	canvas_context.strokeStyle="lightgray"; 
+    var width=mX-mouseX;
+    var height=mY-mouseY;
+    canvas_context.beginPath();
+    canvas_context.rect(mouseX,mouseY,width,height);
+    canvas_context.fill();
+    canvas_context.stroke();
+	
+	for ( var i = 0; i < arrayOfStrokes.length; ++i ) {
+         
+			 
+			var rectangle = { x: mouseX, y: mouseY, width: width, height: height };
+			var pointMin = { x: arrayOfStrokes[i][0].x, y: arrayOfStrokes[i][0].y };
+			var pointMax = { x: arrayOfStrokes[i][arrayOfStrokes[i].length-1].x, y: arrayOfStrokes[i][arrayOfStrokes[i].length-1].y };
+			 
+			if  (point_in_rectagnle( pointMin.x, pointMin.y, rectangle.x, rectangle.y, rectangle.x+rectangle.width, rectangle.y+rectangle.height) && 
+				 point_in_rectagnle( pointMax.x, pointMax.y, rectangle.x, rectangle.y, rectangle.x+rectangle.width, rectangle.y+rectangle.height))
+			
+			 
+			{
+				arrayOfSelectedStrokes.push( arrayOfStrokes[i] ); 
+				  
+				
+			}
+			
+			   
+	}
+	
+	//redraw();
+}
+
+
+var redraw = function() {
+	
+	var c=document.getElementById("myCanvas");
+	var ctx=c.getContext("2d");
+	 
+   canvas_context.strokeStyle = "#000000";
+   for ( var i = 0; i < arrayOfStrokes.length; ++i ) {
+      drawStroke( arrayOfStrokes[i] );
+   }
+    if (document.getElementById('r2').checked) { 
+	
+	   for ( var i = 0; i < arrayOfSelectedStrokes.length; ++i ) {
+		   
+		  var Xs = [];
+		  var Ys = [];
+		  for(var j = 0; j < arrayOfSelectedStrokes[i].length; ++j){
+			Xs.push(arrayOfSelectedStrokes[i][j].x);
+			Ys.push(arrayOfSelectedStrokes[i][j].y);
+		  }
+		  var minX1 = Math.min.apply(null, Xs);
+		  var maxX1 = Math.max.apply(null, Xs);
+		  
+		   
+		  var minY1 = Math.min.apply(null, Ys);
+		  var maxY1 = Math.max.apply(null, Ys);
+		    
+		  
+			if(!alreadyPushed(minX1,minY1,maxX1-minX1,maxY1-minY1)){
+			 
+				ctx.fillRect(minX1,
+				minY1,
+				maxX1-minX1,
+				maxY1-minY1);
+				 
+				rectanglePositions.push({x: minX1,y: minY1,w:maxX1-minX1,h:maxY1-minY1,selectedStroke:arrayOfSelectedStrokes[i]}); 
+				
+			}
+	   }
+   }
+
+   if ( buttonIsDown ) {
+      canvas_context.strokeStyle = "#ff0000";
+      drawStroke( stroke );
+	  if (document.getElementById('r1').checked && document.getElementById('r4').checked) {
+			drawStroke( strokeSym );	  
+	  }
+	  
+	  
+   }
+    if (document.getElementById('r3').checked) {
+	canvas_context.clearRect(0, 0, canvas.width, canvas.height);
+	canvas_context.strokeStyle = "#000000";
+	drawStrokes();
+	canvas_context.strokeStyle = "#000000";
+	   for ( var i = 0; i < rectanglePositions.length; ++i ) {
+		  var x = rectanglePositions[i].x;
+		  var y = rectanglePositions[i].y; 
+		  canvas_context.fillRect(x,y,rectanglePositions[i].w,rectanglePositions[i].h);  
+		  canvas_context.strokeRect(x,y,rectanglePositions[i].w,rectanglePositions[i].h);  
+		    
+		  
+	   }
+	   
+   }
+    
+}
+ 
+
+function clearButtonHandler() {
+canvas_context.clearRect(0,0,canvas.width,canvas.height);
+   arrayOfStrokes = [];
+   arrayOfSelectedStrokes=[];
+   rectanglePositions=[];
+   redraw();
+   //location.reload(); 
+}
+function alreadyPushed(x,y,w,h){
+	for(var i=0;i<rectanglePositions.length;i++){
+		if(rectanglePositions[i].x==x && rectanglePositions[i].y==y && rectanglePositions[i].h==h && rectanglePositions[i].w==w){
+			return true;
+		}
+	}
+	return false;
+}
+function clearSelected() {
+    arrayOfSelectedStrokes=[];
+	redraw();
+}
+ 
+ 
+function computeIndexOfRectangleContainingPoint(x,y) {
+   for ( var i = rectanglePositions.length-1; i >= 0; --i ) {
+      var x0 = rectanglePositions[i].x;
+      var y0 = rectanglePositions[i].y;
+      if ( x0 <= x && x <= x0+rectanglePositions[i].w && y0 <= y && y <= y0+rectanglePositions[i].h ) {
+         return i; 
+      }
+   }
+   
+    
+   return -1; // none
+}
+
+
+function redrawSelection(){
+	for ( var i = rectanglePositions.length-1; i >= 0; --i ) {
+		var c=document.getElementById("myCanvas");
+		var ctx=c.getContext("2d");
+		ctx.fillStyle = "rgba(150, 210, 230, 0.3)";
+		ctx.strokeStyle="lightgray";
+		ctx.fillRect(rectanglePositions[i].x,
+		rectanglePositions[i].y,
+		rectanglePositions[i].w,
+		rectanglePositions[i].h);
+	 
+		ctx.stroke();
+		
+	}
+   }
+function drawStrokes(){
+for ( var i = 0; i < arrayOfStrokes.length; ++i ) {
+		  drawStroke( arrayOfStrokes[i] );
+	   }
+}
+
+ 
+</script> 
+
+</body>
+</html>
